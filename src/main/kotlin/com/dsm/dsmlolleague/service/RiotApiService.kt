@@ -145,6 +145,45 @@ class RiotApiService(
     }
     
     /**
+     * Riot ID로 소환사 레벨을 조회합니다.
+     */
+    fun getSummonerLevel(gameName: String, tagLine: String): Int? {
+        return try {
+            // 1. PUUID 조회
+            val puuid = getPuuidByRiotId(gameName, tagLine)
+            if (puuid == null) {
+                println("PUUID 조회 실패: ${gameName}#${tagLine}")
+                return null
+            }
+            
+            println("${gameName}#${tagLine} 소환사 레벨 조회 중...")
+            
+            // 2. 소환사 정보 조회
+            val summonerDto = webClient.get()
+                .uri("/lol/summoner/v4/summoners/by-puuid/{puuid}", puuid)
+                .retrieve()
+                .bodyToMono(SummonerDto::class.java)
+                .block()
+            
+            val level = summonerDto?.summonerLevel
+            println("${gameName}#${tagLine} 소환사 레벨: ${level}")
+            
+            level
+        } catch (e: WebClientResponseException) {
+            if (e.statusCode.value() == 404) {
+                println("소환사 정보를 찾을 수 없습니다: ${gameName}#${tagLine}")
+                null
+            } else {
+                println("소환사 정보 조회 실패: ${e.message}")
+                throw RuntimeException("소환사 정보 조회 실패: ${e.message}")
+            }
+        } catch (e: Exception) {
+            println("소환사 레벨 조회 중 오류 발생: ${e.message}")
+            null
+        }
+    }
+    
+    /**
      * PUUID로 솔로랭크 매치 ID 목록을 조회합니다. (페이징 처리)
      * 시즌 필터링은 분석 단계에서 수행합니다.
      */
@@ -500,6 +539,16 @@ data class AccountDto(
     val puuid: String,
     val gameName: String,
     val tagLine: String
+)
+
+data class SummonerDto(
+    val accountId: String,
+    val profileIconId: Int,
+    val revisionDate: Long,
+    val name: String,
+    val id: String,
+    val puuid: String,
+    val summonerLevel: Int
 )
 
 data class MatchDto(

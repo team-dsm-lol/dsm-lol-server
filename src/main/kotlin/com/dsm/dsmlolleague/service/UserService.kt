@@ -39,6 +39,23 @@ class UserService(
             throw RuntimeException("이미 Riot 계정이 등록되어 있습니다")
         }
         
+        // 실제 소환사 레벨 조회 및 50레벨 이상 체크
+        val actualLevel = riotApiService.getSummonerLevel(
+            riotAccountRequest.gameName, 
+            riotAccountRequest.tagLine
+        )
+        
+        if (actualLevel == null) {
+            throw RuntimeException("소환사 정보를 조회할 수 없습니다. 올바른 Riot ID인지 확인해주세요.")
+        }
+        
+        if (actualLevel < 50) {
+            throw RuntimeException("50레벨 이상의 계정만 참가 가능합니다. (현재 레벨: ${actualLevel})")
+        }
+        
+        // Rate Limiting을 위한 딜레이 (Riot API 호출 후)
+        Thread.sleep(100)
+        
         // OP.GG에서 티어 정보 크롤링
         val opggTierInfo = riotApiService.getTierInfoFromOpGG(
             riotAccountRequest.gameName, 
@@ -53,7 +70,7 @@ class UserService(
         
         // 사용자 정보 업데이트
         user.summonerName = summonerName
-        user.level = 50 // 기본 레벨 (50레벨 이상 제한)
+        user.level = actualLevel // 실제 조회된 레벨 사용
         
         // 현재 티어/랭크 설정 (OP.GG에서 가져온 현재 시즌 티어)
         if (opggTierInfo.currentSeasonHighest != null) {
