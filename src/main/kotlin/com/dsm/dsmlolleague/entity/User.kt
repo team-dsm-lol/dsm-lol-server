@@ -50,6 +50,18 @@ data class User(
     var leaguePoints: Int = 0,
     
     @Column
+    var level: Int = 0,
+    
+    @Enumerated(EnumType.STRING)
+    var topTier: Tier? = null,
+    
+    @Enumerated(EnumType.STRING)
+    var topRank: RankLevel? = null,
+    
+    @Column
+    var masteryBenefit: Int = 0,
+    
+    @Column
     var score: Int = 0,
     
     @ManyToOne

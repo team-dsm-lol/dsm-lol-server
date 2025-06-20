@@ -37,6 +37,10 @@ data class Team(
     }
     
     fun canRecruit(): Boolean {
-        return memberCount < 5
+        return memberCount < 5 && totalScore <= 50
+    }
+    
+    fun canRecruitWithNewMember(newMemberScore: Int): Boolean {
+        return memberCount < 5 && (totalScore + newMemberScore) <= 50
     }
 } 

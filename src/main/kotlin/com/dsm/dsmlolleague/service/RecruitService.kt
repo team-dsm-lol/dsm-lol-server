@@ -106,6 +106,11 @@ class RecruitService(
     
     @Transactional
     private fun acceptRecruitRequest(recruitRequest: com.dsm.dsmlolleague.entity.RecruitRequest, targetUser: User): String {
+        // 50점 제한 확인
+        if (!recruitRequest.team.canRecruitWithNewMember(targetUser.score)) {
+            throw RuntimeException("팀 점수 제한을 초과합니다 (최대 50점). 현재 팀 점수: ${recruitRequest.team.totalScore}, 영입 대상자 점수: ${targetUser.score}")
+        }
+        
         // 기존 팀에서 탈퇴 (있다면)
         targetUser.team?.let { currentTeam ->
             targetUser.team = null
@@ -177,6 +182,10 @@ class RecruitService(
             tier = user.tier,
             rank = user.rank,
             leaguePoints = user.leaguePoints,
+            level = user.level,
+            topTier = user.topTier,
+            topRank = user.topRank,
+            masteryBenefit = user.masteryBenefit,
             score = user.score,
             teamName = user.team?.name,
             isTeamLeader = user.team?.isLeader(user) ?: false

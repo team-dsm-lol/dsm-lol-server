@@ -53,6 +53,10 @@ data class UserResponse(
     val tier: Tier?,
     val rank: RankLevel?,
     val leaguePoints: Int,
+    val level: Int,
+    val topTier: Tier?,
+    val topRank: RankLevel?,
+    val masteryBenefit: Int,
     val score: Int,
     val teamName: String?,
     val isTeamLeader: Boolean
@@ -67,4 +71,11 @@ data class UserFilterRequest(
     val tier: Tier? = null,
     val name: String? = null,
     val hasTeam: Boolean? = null
+)
+
+data class TopTierUpdateRequest(
+    @field:NotNull(message = "탑레 티어는 필수입니다")
+    val topTier: Tier,
+    
+    val topRank: RankLevel? = null
 ) 

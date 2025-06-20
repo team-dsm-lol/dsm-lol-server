@@ -151,6 +151,10 @@ class TeamService(
             tier = user.tier,
             rank = user.rank,
             leaguePoints = user.leaguePoints,
+            level = user.level,
+            topTier = user.topTier,
+            topRank = user.topRank,
+            masteryBenefit = user.masteryBenefit,
             score = user.score,
             teamName = user.team?.name,
             isTeamLeader = user.team?.isLeader(user) ?: false

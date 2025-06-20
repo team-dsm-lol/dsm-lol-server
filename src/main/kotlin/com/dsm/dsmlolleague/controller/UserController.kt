@@ -116,5 +116,40 @@ class UserController(
         }
     }
     
+    @PutMapping("/me/top-tier")
+    @Operation(summary = "내 탑레 정보 업데이트", description = "전 시즌 최고 티어 정보를 업데이트합니다.")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @ApiResponses(
+        SwaggerApiResponse(responseCode = "200", description = "탑레 정보 업데이트 성공"),
+        SwaggerApiResponse(responseCode = "400", description = "탑레 정보 업데이트 실패")
+    )
+    fun updateMyTopTier(
+        @Valid @RequestBody topTierRequest: TopTierUpdateRequest,
+        authentication: Authentication
+    ): ResponseEntity<ApiResponse<UserResponse>> {
+        return try {
+            val accountId = authentication.principal as String
+            val userResponse = userService.updateTopTierInfo(accountId, topTierRequest.topTier, topTierRequest.topRank)
+            ResponseEntity.ok(ApiResponse.success(userResponse, "탑레 정보 업데이트 성공"))
+        } catch (e: Exception) {
+            ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "탑레 정보 업데이트 실패"))
+        }
+    }
+    
+    @PostMapping("/admin/recalculate-scores")
+    @Operation(summary = "모든 사용자 점수 재계산 (관리자)", description = "모든 사용자의 점수를 최신 정보로 재계산합니다.")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @ApiResponses(
+        SwaggerApiResponse(responseCode = "200", description = "점수 재계산 성공"),
+        SwaggerApiResponse(responseCode = "400", description = "점수 재계산 실패")
+    )
+    fun recalculateAllScores(): ResponseEntity<ApiResponse<String>> {
+        return try {
+            val result = userService.recalculateAllScores()
+            ResponseEntity.ok(ApiResponse.success(result, "점수 재계산 완료"))
+        } catch (e: Exception) {
+            ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "점수 재계산 실패"))
+        }
+    }
 
 } 
