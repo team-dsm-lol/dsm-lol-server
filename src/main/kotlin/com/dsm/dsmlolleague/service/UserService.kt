@@ -262,6 +262,16 @@ class UserService(
                         }
                     }
                     
+                    // 소환사 레벨 재조회 및 업데이트
+                    val actualLevel = riotApiService.getSummonerLevel(gameName, tagLine)
+                    if (actualLevel != null) {
+                        user.level = actualLevel
+                        println("${user.name} 레벨 업데이트: ${actualLevel}")
+                    }
+                    
+                    // Rate Limiting을 위한 딜레이 (레벨 조회 후)
+                    Thread.sleep(100)
+                    
                     // 장인 베네핏 재계산
                     user.masteryBenefit = riotApiService.calculateMasteryBenefitFromRiotAPI(gameName, tagLine)
                     
@@ -341,6 +351,16 @@ class UserService(
                                 user.allTimeHighestTier = newAllTimeHighest.tier
                                 user.allTimeHighestRank = newAllTimeHighest.rank
                                 
+                                // 소환사 레벨도 함께 업데이트
+                                val actualLevel = riotApiService.getSummonerLevel(gameName, tagLine)
+                                if (actualLevel != null) {
+                                    user.level = actualLevel
+                                    println("${user.name} 레벨 업데이트: ${actualLevel}")
+                                }
+                                
+                                // Rate Limiting을 위한 딜레이 (레벨 조회 후)
+                                Thread.sleep(100)
+                                
                                 // 점수 재계산
                                 user.score = riotApiService.calculateScore(
                                     seasonHighestTier = user.seasonHighestTier,
@@ -378,5 +398,59 @@ class UserService(
         }
         
         return "총 ${users.size}명 중 ${analyzedCount}명 분석 완료, ${improvedCount}명의 모든 시즌 최고 티어 개선됨 (OP.GG 기반)"
+    }
+    
+    @Transactional
+    fun updateAllUsersLevel(): String {
+        val users = userRepository.findAll().filter { it.summonerName != null }
+        var updatedCount = 0
+        
+        users.forEach { user ->
+            try {
+                // 소환사명에서 게임명과 태그라인 분리
+                val nameParts = user.summonerName!!.split("#")
+                if (nameParts.size != 2) {
+                    println("잘못된 소환사명 형식: ${user.summonerName}")
+                    return@forEach
+                }
+                
+                val gameName = nameParts[0]
+                val tagLine = nameParts[1]
+                
+                println("${user.name} 레벨 업데이트 시작... (현재 레벨: ${user.level})")
+                
+                // 실제 소환사 레벨 조회
+                val actualLevel = riotApiService.getSummonerLevel(gameName, tagLine)
+                if (actualLevel != null) {
+                    val oldLevel = user.level
+                    user.level = actualLevel
+                    
+                    // 점수 재계산 (레벨별 최소 점수 적용)
+                    user.score = riotApiService.calculateScore(
+                        seasonHighestTier = user.seasonHighestTier,
+                        seasonHighestRank = user.seasonHighestRank,
+                        allTimeHighestTier = user.allTimeHighestTier,
+                        allTimeHighestRank = user.allTimeHighestRank,
+                        level = user.level,
+                        masteryBenefit = user.masteryBenefit
+                    )
+                    
+                    userRepository.save(user)
+                    updatedCount++
+                    
+                    println("${user.name} 레벨 업데이트 완료: ${oldLevel} → ${actualLevel} (점수: ${user.score})")
+                } else {
+                    println("${user.name} 레벨 조회 실패")
+                }
+                
+                // Rate Limiting
+                Thread.sleep(150) // 150ms 딜레이
+                
+            } catch (e: Exception) {
+                println("사용자 ${user.name} 레벨 업데이트 실패: ${e.message}")
+            }
+        }
+        
+        return "총 ${users.size}명 중 ${updatedCount}명의 레벨이 업데이트되었습니다."
     }
 } 

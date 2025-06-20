@@ -201,7 +201,7 @@ class RiotApiService(
                 
                 val matchIds = accountWebClient.get()
                     .uri("/lol/match/v5/matches/by-puuid/{puuid}/ids?start={start}&count={count}&queue=420", puuid, start, count)
-                    .retrieve()
+                .retrieve()
                     .bodyToMono(Array<String>::class.java)
                     .block()?.toList() ?: emptyList()
                 
@@ -415,7 +415,7 @@ class RiotApiService(
         // 레벨별 최소 점수 적용 (level이 null인 경우 0으로 처리)
         val actualLevel = level ?: 0
         val levelMinScore = when {
-            actualLevel >= 300 -> 13
+            actualLevel >= 300 -> 12
             actualLevel >= 200 -> 9
             actualLevel >= 100 -> 6
             else -> 0

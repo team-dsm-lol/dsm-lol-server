@@ -167,5 +167,21 @@ class UserController(
             ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "시즌별 티어 분석 실패"))
         }
     }
+    
+    @PostMapping("/admin/update-levels")
+    @Operation(summary = "모든 사용자 레벨 업데이트 (관리자)", description = "모든 사용자의 실제 소환사 레벨을 Riot API에서 조회하여 업데이트하고 점수를 재계산합니다.")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @ApiResponses(
+        SwaggerApiResponse(responseCode = "200", description = "레벨 업데이트 성공"),
+        SwaggerApiResponse(responseCode = "400", description = "레벨 업데이트 실패")
+    )
+    fun updateAllUsersLevel(): ResponseEntity<ApiResponse<String>> {
+        return try {
+            val result = userService.updateAllUsersLevel()
+            ResponseEntity.ok(ApiResponse.success(result, "레벨 업데이트 완료"))
+        } catch (e: Exception) {
+            ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "레벨 업데이트 실패"))
+        }
+    }
 
 } 
