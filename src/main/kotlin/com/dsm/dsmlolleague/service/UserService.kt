@@ -101,11 +101,11 @@ class UserService(
             }
         }
         
-        // 장인 베네핏 계산 (Riot API 기반)
-        user.masteryBenefit = riotApiService.calculateMasteryBenefitFromRiotAPI(
-            riotAccountRequest.gameName,
-            riotAccountRequest.tagLine
-        )
+//        // 장인 베네핏 계산 (Riot API 기반)
+//        user.masteryBenefit = riotApiService.calculateMasteryBenefitFromRiotAPI(
+//            riotAccountRequest.gameName,
+//            riotAccountRequest.tagLine
+//        )
         
         // 새로운 점수 계산 방식 적용
         user.score = riotApiService.calculateScore(
