@@ -35,61 +35,67 @@ class UserService(
             ?: throw RuntimeException("사용자를 찾을 수 없습니다")
         
         // 이미 Riot 계정이 등록된 경우 확인
-        if (user.puuid != null) {
+        if (user.summonerName != null) {
             throw RuntimeException("이미 Riot 계정이 등록되어 있습니다")
         }
         
-        // Riot ID로 소환사 정보 조회 (새로운 방식)
-        val summonerDto = riotApiService.getSummonerByRiotId(
+        // OP.GG에서 티어 정보 크롤링
+        val opggTierInfo = riotApiService.getTierInfoFromOpGG(
             riotAccountRequest.gameName, 
             riotAccountRequest.tagLine
-        ) ?: throw RuntimeException("존재하지 않는 Riot ID입니다 (${riotAccountRequest.gameName}#${riotAccountRequest.tagLine})")
+        ) ?: throw RuntimeException("OP.GG에서 해당 소환사를 찾을 수 없습니다 (${riotAccountRequest.gameName}#${riotAccountRequest.tagLine})")
         
-        // 중복 PUUID 확인
-        userRepository.findByPuuid(summonerDto.puuid)?.let {
+        // 중복 등록 확인 (소환사명 기준)
+        val summonerName = "${riotAccountRequest.gameName}#${riotAccountRequest.tagLine}"
+        userRepository.findBySummonerName(summonerName)?.let {
             throw RuntimeException("이미 등록된 Riot 계정입니다")
         }
         
-        // PUUID 기반으로 리그 정보 조회 (새로운 권장 방식)
-        val leagueEntries = riotApiService.getLeagueEntriesByPuuid(summonerDto.puuid)
-        val soloRankEntry = leagueEntries.find { it.queueType == "RANKED_SOLO_5x5" }
-        
-        // 현재 시즌 플레이 기록 기반 장인 베네핏 계산
-        val masteryBenefit = riotApiService.calculateMasteryBenefitFromMatches(summonerDto.puuid)
-        
         // 사용자 정보 업데이트
-        user.summonerName = "${riotAccountRequest.gameName}#${riotAccountRequest.tagLine}" // Riot ID 형태로 저장
-        user.summonerId = summonerDto.id
-        user.puuid = summonerDto.puuid
-        user.level = summonerDto.summonerLevel.toInt() // 계정 레벨 저장
-        user.masteryBenefit = masteryBenefit // 장인 베네핏 저장
+        user.summonerName = summonerName
+        user.level = 50 // 기본 레벨 (50레벨 이상 제한)
         
-        // 현재 시즌 랭크 정보 업데이트
-        if (soloRankEntry != null) {
-            user.tier = Tier.valueOf(soloRankEntry.tier)
-            // rank 문자열을 RankLevel enum으로 변환 (I, II, III, IV)
-            user.rank = when (soloRankEntry.rank) {
-                "I" -> RankLevel.I
-                "II" -> RankLevel.II
-                "III" -> RankLevel.III
-                "IV" -> RankLevel.IV
-                else -> null // Master, Grandmaster, Challenger는 rank가 없음
+        // 현재 티어/랭크 설정 (OP.GG에서 가져온 현재 시즌 티어)
+        if (opggTierInfo.currentSeasonHighest != null) {
+            user.tier = opggTierInfo.currentSeasonHighest.tier
+            user.rank = opggTierInfo.currentSeasonHighest.rank
+        }
+        
+        // 이번 시즌 최고 티어 설정
+        if (opggTierInfo.currentSeasonHighest != null) {
+            user.seasonHighestTier = opggTierInfo.currentSeasonHighest.tier
+            user.seasonHighestRank = opggTierInfo.currentSeasonHighest.rank
+        }
+        
+        // 모든 시즌 최고 티어 계산 (전시즌 티어들 + 이번 시즌 최고 티어 중 최고)
+        val allTiers = mutableListOf<TierInfo>()
+        if (opggTierInfo.currentSeasonHighest != null) {
+            allTiers.add(opggTierInfo.currentSeasonHighest)
+        }
+        allTiers.addAll(opggTierInfo.previousSeasonTiers)
+        
+        if (allTiers.isNotEmpty()) {
+            val allTimeHighest = allTiers.maxByOrNull { 
+                riotApiService.calculateTierScore(it.tier, it.rank) 
             }
-            user.leaguePoints = soloRankEntry.leaguePoints
+            if (allTimeHighest != null) {
+                user.allTimeHighestTier = allTimeHighest.tier
+                user.allTimeHighestRank = allTimeHighest.rank
+            }
         }
         
-        // 탑레 정보가 없는 경우 현재 시즌 정보로 초기화 (추후 수동 입력 가능)
-        if (user.topTier == null) {
-            user.topTier = user.tier
-            user.topRank = user.rank
-        }
+        // 장인 베네핏 계산 (Riot API 기반)
+        user.masteryBenefit = riotApiService.calculateMasteryBenefitFromRiotAPI(
+            riotAccountRequest.gameName,
+            riotAccountRequest.tagLine
+        )
         
         // 새로운 점수 계산 방식 적용
         user.score = riotApiService.calculateScore(
-            currentTier = user.tier,
-            currentRank = user.rank,
-            topTier = user.topTier,
-            topRank = user.topRank,
+            seasonHighestTier = user.seasonHighestTier,
+            seasonHighestRank = user.seasonHighestRank,
+            allTimeHighestTier = user.allTimeHighestTier,
+            allTimeHighestRank = user.allTimeHighestRank,
             level = user.level,
             masteryBenefit = user.masteryBenefit
         )
@@ -153,9 +159,11 @@ class UserService(
             tier = user.tier,
             rank = user.rank,
             leaguePoints = user.leaguePoints,
-            level = user.level,
-            topTier = user.topTier,
-            topRank = user.topRank,
+            level = user.level ?: 0,
+            seasonHighestTier = user.seasonHighestTier,
+            seasonHighestRank = user.seasonHighestRank,
+            allTimeHighestTier = user.allTimeHighestTier,
+            allTimeHighestRank = user.allTimeHighestRank,
             masteryBenefit = user.masteryBenefit,
             score = user.score,
             teamName = user.team?.name,
@@ -168,15 +176,15 @@ class UserService(
         val user = userRepository.findByAccountId(accountId)
             ?: throw RuntimeException("사용자를 찾을 수 없습니다")
         
-        user.topTier = topTier
-        user.topRank = topRank
+        user.allTimeHighestTier = topTier
+        user.allTimeHighestRank = topRank
         
         // 점수 재계산
         user.score = riotApiService.calculateScore(
-            currentTier = user.tier,
-            currentRank = user.rank,
-            topTier = user.topTier,
-            topRank = user.topRank,
+            seasonHighestTier = user.seasonHighestTier,
+            seasonHighestRank = user.seasonHighestRank,
+            allTimeHighestTier = user.allTimeHighestTier,
+            allTimeHighestRank = user.allTimeHighestRank,
             level = user.level,
             masteryBenefit = user.masteryBenefit
         )
@@ -187,60 +195,171 @@ class UserService(
     
     @Transactional
     fun recalculateAllScores(): String {
-        val users = userRepository.findAll().filter { it.puuid != null }
+        val users = userRepository.findAll().filter { it.summonerName != null }
         var updatedCount = 0
         
         users.forEach { user ->
             try {
-                // 최신 소환사 정보 조회
-                val summonerDto = riotApiService.getSummonerByPuuid(user.puuid!!)
-                if (summonerDto != null) {
-                    // 레벨 업데이트
-                    user.level = summonerDto.summonerLevel.toInt()
+                // 소환사명에서 게임명과 태그라인 분리
+                val nameParts = user.summonerName!!.split("#")
+                if (nameParts.size != 2) {
+                    println("잘못된 소환사명 형식: ${user.summonerName}")
+                    return@forEach
                 }
                 
-                // 최신 리그 정보 조회
-                val leagueEntries = riotApiService.getLeagueEntriesByPuuid(user.puuid!!)
-                val soloRankEntry = leagueEntries.find { it.queueType == "RANKED_SOLO_5x5" }
+                val gameName = nameParts[0]
+                val tagLine = nameParts[1]
                 
-                if (soloRankEntry != null) {
-                    user.tier = Tier.valueOf(soloRankEntry.tier)
-                    user.rank = when (soloRankEntry.rank) {
-                        "I" -> RankLevel.I
-                        "II" -> RankLevel.II
-                        "III" -> RankLevel.III
-                        "IV" -> RankLevel.IV
-                        else -> null
+                println("${user.name} OP.GG 점수 재계산 시작...")
+                
+                // OP.GG에서 최신 티어 정보 크롤링
+                val opggTierInfo = riotApiService.getTierInfoFromOpGG(gameName, tagLine)
+                
+                if (opggTierInfo != null) {
+                    // 현재 티어/랭크 업데이트
+                    if (opggTierInfo.currentSeasonHighest != null) {
+                        user.tier = opggTierInfo.currentSeasonHighest.tier
+                        user.rank = opggTierInfo.currentSeasonHighest.rank
                     }
-                    user.leaguePoints = soloRankEntry.leaguePoints
-                } else {
-                    // 언랭인 경우
-                    user.tier = null
-                    user.rank = null
-                    user.leaguePoints = 0
+                    
+                    // 이번 시즌 최고 티어 업데이트
+                    if (opggTierInfo.currentSeasonHighest != null) {
+                        user.seasonHighestTier = opggTierInfo.currentSeasonHighest.tier
+                        user.seasonHighestRank = opggTierInfo.currentSeasonHighest.rank
+                    }
+                    
+                    // 모든 시즌 최고 티어 계산
+                    val allTiers = mutableListOf<TierInfo>()
+                    if (opggTierInfo.currentSeasonHighest != null) {
+                        allTiers.add(opggTierInfo.currentSeasonHighest)
+                    }
+                    allTiers.addAll(opggTierInfo.previousSeasonTiers)
+                    
+                    if (allTiers.isNotEmpty()) {
+                        val allTimeHighest = allTiers.maxByOrNull { 
+                            riotApiService.calculateTierScore(it.tier, it.rank) 
+                        }
+                        if (allTimeHighest != null) {
+                            user.allTimeHighestTier = allTimeHighest.tier
+                            user.allTimeHighestRank = allTimeHighest.rank
+                        }
+                    }
+                    
+                    // 장인 베네핏 재계산
+                    user.masteryBenefit = riotApiService.calculateMasteryBenefitFromRiotAPI(gameName, tagLine)
+                    
+                    // 점수 재계산
+                    user.score = riotApiService.calculateScore(
+                        seasonHighestTier = user.seasonHighestTier,
+                        seasonHighestRank = user.seasonHighestRank,
+                        allTimeHighestTier = user.allTimeHighestTier,
+                        allTimeHighestRank = user.allTimeHighestRank,
+                        level = user.level,
+                        masteryBenefit = user.masteryBenefit
+                    )
+                    
+                    userRepository.save(user)
+                    updatedCount++
+                    
+                    println("${user.name} 점수 재계산 완료")
                 }
                 
-                // 현재 시즌 플레이 기록 기반 장인 베네핏 재계산
-                user.masteryBenefit = riotApiService.calculateMasteryBenefitFromMatches(user.puuid!!)
+                // Rate Limiting
+                Thread.sleep(2000) // 2초 딜레이
                 
-                // 점수 재계산
-                user.score = riotApiService.calculateScore(
-                    currentTier = user.tier,
-                    currentRank = user.rank,
-                    topTier = user.topTier,
-                    topRank = user.topRank,
-                    level = user.level,
-                    masteryBenefit = user.masteryBenefit
-                )
-                
-                userRepository.save(user)
-                updatedCount++
             } catch (e: Exception) {
-                // 개별 사용자 업데이트 실패 시 로그만 출력하고 계속 진행
                 println("사용자 ${user.name} 점수 재계산 실패: ${e.message}")
             }
         }
         
         return "총 ${users.size}명 중 ${updatedCount}명의 점수가 업데이트되었습니다."
+    }
+    
+    @Transactional
+    fun analyzeAllUsersSeasonTiers(): String {
+        val users = userRepository.findAll().filter { it.summonerName != null }
+        var analyzedCount = 0
+        var improvedCount = 0
+        
+        users.forEach { user ->
+            try {
+                // 소환사명에서 게임명과 태그라인 분리
+                val nameParts = user.summonerName!!.split("#")
+                if (nameParts.size != 2) {
+                    println("잘못된 소환사명 형식: ${user.summonerName}")
+                    return@forEach
+                }
+                
+                val gameName = nameParts[0]
+                val tagLine = nameParts[1]
+                
+                println("${user.name} OP.GG 시즌별 티어 분석 시작...")
+                
+                // OP.GG에서 티어 정보 크롤링
+                val opggTierInfo = riotApiService.getTierInfoFromOpGG(gameName, tagLine)
+                
+                if (opggTierInfo != null) {
+                    // 모든 시즌 최고 티어 재계산
+                    val allTiers = mutableListOf<TierInfo>()
+                    if (opggTierInfo.currentSeasonHighest != null) {
+                        allTiers.add(opggTierInfo.currentSeasonHighest)
+                    }
+                    allTiers.addAll(opggTierInfo.previousSeasonTiers)
+                    
+                    if (allTiers.isNotEmpty()) {
+                        val newAllTimeHighest = allTiers.maxByOrNull { 
+                            riotApiService.calculateTierScore(it.tier, it.rank) 
+                        }
+                        
+                        if (newAllTimeHighest != null) {
+                            val currentAllTimeScore = riotApiService.calculateTierScore(
+                                user.allTimeHighestTier, user.allTimeHighestRank
+                            )
+                            val newAllTimeScore = riotApiService.calculateTierScore(
+                                newAllTimeHighest.tier, newAllTimeHighest.rank
+                            )
+                            
+                            // 분석된 티어가 더 높다면 업데이트
+                            if (newAllTimeScore > currentAllTimeScore) {
+                                user.allTimeHighestTier = newAllTimeHighest.tier
+                                user.allTimeHighestRank = newAllTimeHighest.rank
+                                
+                                // 점수 재계산
+                                user.score = riotApiService.calculateScore(
+                                    seasonHighestTier = user.seasonHighestTier,
+                                    seasonHighestRank = user.seasonHighestRank,
+                                    allTimeHighestTier = user.allTimeHighestTier,
+                                    allTimeHighestRank = user.allTimeHighestRank,
+                                    level = user.level,
+                                    masteryBenefit = user.masteryBenefit
+                                )
+                                
+                                userRepository.save(user)
+                                improvedCount++
+                                
+                                println("${user.name} - 모든 시즌 최고 티어 업데이트: ${newAllTimeHighest.tier} ${newAllTimeHighest.rank ?: ""}")
+                            }
+                            
+                            // 분석 결과 출력
+                            println("${user.name} OP.GG 분석 결과:")
+                            println("  이번 시즌 최고: ${opggTierInfo.currentSeasonHighest?.tier} ${opggTierInfo.currentSeasonHighest?.rank ?: ""}")
+                            opggTierInfo.previousSeasonTiers.forEachIndexed { index, tierInfo ->
+                                println("  전시즌 ${index + 1}: ${tierInfo.tier} ${tierInfo.rank ?: ""}")
+                            }
+                        }
+                    }
+                }
+                
+                analyzedCount++
+                
+                // Rate Limiting을 위한 딜레이
+                Thread.sleep(3000) // 3초 딜레이
+                
+            } catch (e: Exception) {
+                println("${user.name} OP.GG 시즌별 티어 분석 실패: ${e.message}")
+            }
+        }
+        
+        return "총 ${users.size}명 중 ${analyzedCount}명 분석 완료, ${improvedCount}명의 모든 시즌 최고 티어 개선됨 (OP.GG 기반)"
     }
 } 

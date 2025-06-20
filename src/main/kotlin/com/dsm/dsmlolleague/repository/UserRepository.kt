@@ -14,8 +14,6 @@ interface UserRepository : JpaRepository<User, Long> {
     
     fun findBySummonerName(summonerName: String): User?
     
-    fun findByPuuid(puuid: String): User?
-    
     fun findByNameContainingIgnoreCase(name: String): List<User>
     
     fun findByTier(tier: Tier): List<User>

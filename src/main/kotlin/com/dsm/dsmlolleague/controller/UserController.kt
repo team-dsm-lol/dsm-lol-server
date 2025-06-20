@@ -117,11 +117,11 @@ class UserController(
     }
     
     @PutMapping("/me/top-tier")
-    @Operation(summary = "내 탑레 정보 업데이트", description = "전 시즌 최고 티어 정보를 업데이트합니다.")
+    @Operation(summary = "내 모든 시즌 최고 티어 업데이트", description = "모든 시즌 최고 티어 정보를 수동으로 업데이트합니다.")
     @SecurityRequirement(name = "Bearer Authentication")
     @ApiResponses(
-        SwaggerApiResponse(responseCode = "200", description = "탑레 정보 업데이트 성공"),
-        SwaggerApiResponse(responseCode = "400", description = "탑레 정보 업데이트 실패")
+        SwaggerApiResponse(responseCode = "200", description = "모든 시즌 최고 티어 정보 업데이트 성공"),
+        SwaggerApiResponse(responseCode = "400", description = "모든 시즌 최고 티어 정보 업데이트 실패")
     )
     fun updateMyTopTier(
         @Valid @RequestBody topTierRequest: TopTierUpdateRequest,
@@ -130,9 +130,9 @@ class UserController(
         return try {
             val accountId = authentication.principal as String
             val userResponse = userService.updateTopTierInfo(accountId, topTierRequest.topTier, topTierRequest.topRank)
-            ResponseEntity.ok(ApiResponse.success(userResponse, "탑레 정보 업데이트 성공"))
+            ResponseEntity.ok(ApiResponse.success(userResponse, "모든 시즌 최고 티어 정보 업데이트 성공"))
         } catch (e: Exception) {
-            ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "탑레 정보 업데이트 실패"))
+            ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "모든 시즌 최고 티어 정보 업데이트 실패"))
         }
     }
     
@@ -149,6 +149,22 @@ class UserController(
             ResponseEntity.ok(ApiResponse.success(result, "점수 재계산 완료"))
         } catch (e: Exception) {
             ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "점수 재계산 실패"))
+        }
+    }
+    
+    @PostMapping("/admin/analyze-season-tiers")
+    @Operation(summary = "모든 사용자 시즌별 최고 티어 분석 (관리자)", description = "매치 히스토리를 분석하여 모든 사용자의 과거 시즌 최고 티어를 추정합니다.")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @ApiResponses(
+        SwaggerApiResponse(responseCode = "200", description = "시즌별 티어 분석 성공"),
+        SwaggerApiResponse(responseCode = "400", description = "시즌별 티어 분석 실패")
+    )
+    fun analyzeSeasonTiers(): ResponseEntity<ApiResponse<String>> {
+        return try {
+            val result = userService.analyzeAllUsersSeasonTiers()
+            ResponseEntity.ok(ApiResponse.success(result, "시즌별 티어 분석 완료"))
+        } catch (e: Exception) {
+            ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "시즌별 티어 분석 실패"))
         }
     }
 

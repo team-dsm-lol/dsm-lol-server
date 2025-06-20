@@ -49,6 +49,9 @@ dependencies {
     // HTTP Client
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     
+    // Web Scraping
+    implementation("org.jsoup:jsoup:1.17.2")
+    
     // Swagger/OpenAPI
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
     

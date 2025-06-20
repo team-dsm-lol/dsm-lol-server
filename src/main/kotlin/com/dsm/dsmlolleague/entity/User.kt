@@ -33,12 +33,6 @@ data class User(
     @Column(unique = true, nullable = true)
     var summonerName: String? = null,
     
-    @Column(nullable = true)
-    var summonerId: String? = null,
-    
-    @Column(nullable = true)
-    var puuid: String? = null,
-    
     @Enumerated(EnumType.STRING)
     var tier: Tier? = null,
     
@@ -50,13 +44,19 @@ data class User(
     var leaguePoints: Int = 0,
     
     @Column
-    var level: Int = 0,
+    var level: Int? = null,
     
     @Enumerated(EnumType.STRING)
-    var topTier: Tier? = null,
+    var seasonHighestTier: Tier? = null,
     
     @Enumerated(EnumType.STRING)
-    var topRank: RankLevel? = null,
+    var seasonHighestRank: RankLevel? = null,
+    
+    @Enumerated(EnumType.STRING)
+    var allTimeHighestTier: Tier? = null,
+    
+    @Enumerated(EnumType.STRING)
+    var allTimeHighestRank: RankLevel? = null,
     
     @Column
     var masteryBenefit: Int = 0,
