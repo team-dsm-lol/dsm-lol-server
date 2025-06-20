@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout}">
+<head>
+    <title>DSM 멸망전 팀 구성 플랫폼</title>
+</head>
+<body>
+    <div th:fragment="content">
+        <!-- 히어로 섹션 -->
+        <div class="hero-section bg-primary text-white py-5 mb-5 rounded">
+            <div class="text-center">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-crown me-3"></i>
+                    DSM 멸망전 팀 구성 플랫폼
+                </h1>
+                <p class="lead mb-4">
+                    Riot API 연동을 통한 티어 기반 점수 시스템으로<br>
+                    최강의 멸망전 팀을 구성하세요!
+                </p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="/login" class="btn btn-light btn-lg">
+                        <i class="fas fa-sign-in-alt me-2"></i>시작하기
+                    </a>
+                    <a href="/teams" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-users me-2"></i>팀 둘러보기
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 기능 소개 -->
+        <div class="row mb-5">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-graduation-cap fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">학교 계정 연동</h5>
+                        <p class="card-text">
+                            DSM 학교 계정으로 간편하게 로그인하고
+                            학번 기반 인증을 통해 안전하게 이용하세요.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">Riot API 연동</h5>
+                        <p class="card-text">
+                            리그 오브 레전드 소환사 정보를 연동하여
+                            티어와 LP 기반의 정확한 점수를 산정합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-users fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">팀 영입 시스템</h5>
+                        <p class="card-text">
+                            팀장이 마음에 드는 유저에게 영입 요청을 보내고
+                            최대 5명의 팀원으로 구성할 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 대시보드 -->
+        <div class="row text-center mb-5">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h4 class="card-title" id="totalUsers">-</h4>
+                        <p class="card-text">총 가입자 수</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h4 class="card-title" id="totalTeams">-</h4>
+                        <p class="card-text">총 팀 수</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <h4 class="card-title" id="averageScore">-</h4>
+                        <p class="card-text">평균 점수</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h4 class="card-title" id="topTeamScore">-</h4>
+                        <p class="card-text">최고 팀 점수</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상위 팀 미리보기 -->
+        <div class="mb-5">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-medal me-2"></i>상위 팀 랭킹
+            </h3>
+            <div id="topTeams" class="row">
+                <!-- 상위 팀들이 여기에 동적으로 로드됩니다 -->
+            </div>
+            <div class="text-center mt-3">
+                <a href="/teams" class="btn btn-outline-primary">
+                    모든 팀 보기 <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- 시작하기 CTA -->
+        <div class="text-center py-5 bg-light rounded">
+            <h3 class="mb-3">지금 바로 시작하세요!</h3>
+            <p class="mb-4">학교 계정으로 로그인하고 소환사 계정을 연동한 후, 팀을 만들거나 영입 요청을 받아보세요.</p>
+            <a href="/login" class="btn btn-primary btn-lg">
+                <i class="fas fa-rocket me-2"></i>지금 시작하기
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 페이지 로드 시 통계 데이터 로드
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadStatistics();
+            await loadTopTeams();
+        });
+
+        async function loadStatistics() {
+            try {
+                // 사용자 통계
+                const usersResponse = await apiRequest('/api/users');
+                if (usersResponse.success) {
+                    const users = usersResponse.data.users;
+                    document.getElementById('totalUsers').textContent = users.length;
+                    
+                    // 평균 점수 계산
+                    const totalScore = users.reduce((sum, user) => sum + user.score, 0);
+                    const avgScore = users.length > 0 ? Math.round(totalScore / users.length) : 0;
+                    document.getElementById('averageScore').textContent = avgScore;
+                }
+
+                // 팀 통계
+                const teamsResponse = await apiRequest('/api/teams');
+                if (teamsResponse.success) {
+                    const teams = teamsResponse.data.teams;
+                    document.getElementById('totalTeams').textContent = teams.length;
+                    
+                    // 최고 팀 점수
+                    const topScore = teams.length > 0 ? Math.max(...teams.map(team => team.totalScore)) : 0;
+                    document.getElementById('topTeamScore').textContent = topScore;
+                }
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        async function loadTopTeams() {
+            try {
+                const response = await apiRequest('/api/teams');
+                if (response.success) {
+                    const teams = response.data.teams.slice(0, 3); // 상위 3팀만
+                    const topTeamsContainer = document.getElementById('topTeams');
+                    
+                    topTeamsContainer.innerHTML = teams.map((team, index) => `
+                        <div class="col-md-4 mb-3">
+                            <div class="card team-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="card-title mb-0">
+                                            ${index === 0 ? '<i class="fas fa-crown text-warning me-1"></i>' : 
+                                              index === 1 ? '<i class="fas fa-medal text-secondary me-1"></i>' :
+                                              '<i class="fas fa-award text-warning me-1"></i>'}
+                                            ${team.name}
+                                        </h6>
+                                        <span class="badge bg-success">${team.totalScore}점</span>
+                                    </div>
+                                    <p class="text-muted mb-2">팀장: ${team.leader.name}</p>
+                                    <p class="text-muted mb-0">팀원: ${team.memberCount}/5명</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('상위 팀 로드 실패:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout}">
+<head>
+    <title>로그인 - DSM 멸망전 팀 구성 플랫폼</title>
+</head>
+<body>
+    <div th:fragment="content">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-user-circle fa-4x text-primary mb-3"></i>
+                            <h3>DSM 계정 로그인</h3>
+                            <p class="text-muted">학교 계정으로 로그인하세요</p>
+                        </div>
+
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="accountId" class="form-label">계정 ID</label>
+                                <input type="text" class="form-control" id="accountId" name="accountId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">비밀번호</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="loginBtn">
+                                    <span class="spinner-border spinner-border-sm me-2 loading" role="status"></span>
+                                    로그인
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <p class="text-muted">
+                                로그인 후 <strong>소환사 계정 연동</strong>을 진행해주세요
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 안내 사항 -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-info-circle text-info me-2"></i>
+                            이용 안내
+                        </h6>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                DSM 학교 계정으로 로그인
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                소환사 계정 연동 후 이용 가능
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                팀당 최대 5명까지 구성
+                            </li>
+                            <li>
+                                <i class="fas fa-check text-success me-2"></i>
+                                티어 기반 점수 시스템
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 이미 로그인되어 있다면 대시보드로 리다이렉트
+            if (getToken()) {
+                window.location.href = '/dashboard';
+                return;
+            }
+
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const loading = loginBtn.querySelector('.loading');
+
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // 로딩 상태 표시
+                loginBtn.disabled = true;
+                loading.style.display = 'inline-block';
+                
+                const formData = new FormData(loginForm);
+                const loginData = {
+                    accountId: formData.get('accountId'),
+                    password: formData.get('password')
+                };
+
+                try {
+                    const response = await apiRequest('/api/users/login', {
+                        method: 'POST',
+                        body: JSON.stringify(loginData)
+                    });
+
+                    if (response.success) {
+                        setToken(response.data.token);
+                        showToast('로그인 성공!', 'success');
+                        
+                        // 사용자 정보 확인 후 리다이렉트
+                        setTimeout(async () => {
+                            try {
+                                const userResponse = await apiRequest('/api/users/me');
+                                if (userResponse.success && userResponse.data.summonerName) {
+                                    window.location.href = '/dashboard';
+                                } else {
+                                    window.location.href = '/register-riot';
+                                }
+                            } catch (error) {
+                                window.location.href = '/register-riot';
+                            }
+                        }, 1000);
+                    } else {
+                        showToast(response.message || '로그인에 실패했습니다.', 'error');
+                    }
+                } catch (error) {
+                    showToast('로그인 중 오류가 발생했습니다.', 'error');
+                } finally {
+                    loginBtn.disabled = false;
+                    loading.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
