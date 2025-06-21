@@ -49,8 +49,8 @@ class UserService(
             throw RuntimeException("소환사 정보를 조회할 수 없습니다. 올바른 Riot ID인지 확인해주세요.")
         }
         
-        if (actualLevel < 50) {
-            throw RuntimeException("50레벨 이상의 계정만 참가 가능합니다. (현재 레벨: ${actualLevel})")
+        if (actualLevel < 30) {
+            throw RuntimeException("30레벨 이상의 계정만 참가 가능합니다. (현재 레벨: ${actualLevel})")
         }
         
         // Rate Limiting을 위한 딜레이 (Riot API 호출 후)
