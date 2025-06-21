@@ -158,6 +158,8 @@ class TeamService(
             allTimeHighestRank = user.allTimeHighestRank,
             masteryBenefit = user.masteryBenefit,
             score = user.score,
+            mostLane = user.mostLane,
+            secondLane = user.secondLane,
             teamName = user.team?.name,
             isTeamLeader = user.team?.isLeader(user) ?: false
         )

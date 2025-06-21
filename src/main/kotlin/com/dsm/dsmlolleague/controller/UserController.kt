@@ -41,7 +41,7 @@ class UserController(
     @PostMapping("/register-riot")
     @Operation(
         summary = "Riot 계정 연동", 
-        description = "Riot ID (gameName#tagLine)를 사용하여 Riot 계정을 사용자 계정과 연동합니다. 예: {'gameName': 'Hide on bush', 'tagLine': 'KR1'}"
+        description = "Riot ID와 선호 라인을 설정하여 Riot 계정을 사용자 계정과 연동합니다. 예: {'gameName': 'Hide on bush', 'tagLine': 'KR1', 'mostLane': 'MID', 'secondLane': 'ADC'}"
     )
     @SecurityRequirement(name = "Bearer Authentication")
     @ApiResponses(

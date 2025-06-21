@@ -71,6 +71,8 @@ class UserService(
         // 사용자 정보 업데이트
         user.summonerName = summonerName
         user.level = actualLevel // 실제 조회된 레벨 사용
+        user.mostLane = riotAccountRequest.mostLane
+        user.secondLane = riotAccountRequest.secondLane
         
         // 이번 시즌 최고 티어 설정
         if (opggTierInfo.currentSeasonHighest != null) {
@@ -187,6 +189,8 @@ class UserService(
             allTimeHighestRank = user.allTimeHighestRank,
             masteryBenefit = user.masteryBenefit,
             score = user.score,
+            mostLane = user.mostLane,
+            secondLane = user.secondLane,
             teamName = user.team?.name,
             isTeamLeader = user.team?.isLeader(user) ?: false
         )

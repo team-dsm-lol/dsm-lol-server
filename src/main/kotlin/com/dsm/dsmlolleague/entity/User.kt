@@ -64,6 +64,14 @@ data class User(
     @Column
     var score: Int = 0,
     
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    var mostLane: Lane? = null,
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    var secondLane: Lane? = null,
+    
     @ManyToOne
     @JoinColumn(name = "team_id")
     var team: Team? = null,
@@ -77,6 +85,10 @@ data class User(
 
 enum class UserRole {
     SCH, STU, DOR
+}
+
+enum class Lane {
+    TOP, JUNGLE, MID, ADC, SUPPORT
 }
 
 enum class Tier {

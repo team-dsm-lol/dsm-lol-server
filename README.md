@@ -225,5 +225,5 @@ score = tierScoreMap[tier] + leaguePoints
 5. Open a Pull Request
 
 ## 📞 문의사항
-
+ㅎ
 프로젝트에 대한 문의사항이 있으시면 Issue를 생성해주세요. 
