@@ -398,16 +398,11 @@ class RiotApiService(
         level: Int?, 
         masteryBenefit: Int = 0
     ): Int {
-        // 이번 시즌 최고 티어가 없는 경우 모든 시즌 최고 티어만 사용
-        val baseTierInfo = if (seasonHighestTier == null) {
-            TierInfo(allTimeHighestTier ?: Tier.IRON, allTimeHighestRank)
-        } else {
-            // 이번 시즌 최고 티어와 모든 시즌 최고 티어의 중간 티어 계산
-            calculateMiddleTier(
-                seasonHighestTier, seasonHighestRank,
-                allTimeHighestTier ?: Tier.IRON, allTimeHighestRank
-            )
-        }
+        // 점수 계산에 사용되는 최종 티어 정보 계산
+        val baseTierInfo = calculateFinalTierForScore(
+            seasonHighestTier, seasonHighestRank,
+            allTimeHighestTier, allTimeHighestRank
+        )
         
         // 중간 티어의 점수 계산
         val baseScore = calculateTierScore(baseTierInfo.tier, baseTierInfo.rank)
@@ -436,6 +431,27 @@ class RiotApiService(
         val tierValue2 = getTierValue(tier2, rank2)
         val middleValue = (tierValue1 + tierValue2) / 2
         return getTierFromValue(middleValue)
+    }
+    
+    /**
+     * 점수 계산에 사용되는 최종 티어 정보를 반환합니다.
+     */
+    fun calculateFinalTierForScore(
+        seasonHighestTier: Tier?, 
+        seasonHighestRank: RankLevel?, 
+        allTimeHighestTier: Tier?, 
+        allTimeHighestRank: RankLevel?
+    ): TierInfo {
+        // 이번 시즌 최고 티어가 없는 경우 모든 시즌 최고 티어만 사용
+        return if (seasonHighestTier == null) {
+            TierInfo(allTimeHighestTier ?: Tier.IRON, allTimeHighestRank)
+        } else {
+            // 이번 시즌 최고 티어와 모든 시즌 최고 티어의 중간 티어 계산
+            calculateMiddleTier(
+                seasonHighestTier, seasonHighestRank,
+                allTimeHighestTier ?: Tier.IRON, allTimeHighestRank
+            )
+        }
     }
     
     private fun getTierValue(tier: Tier, rank: RankLevel?): Int {

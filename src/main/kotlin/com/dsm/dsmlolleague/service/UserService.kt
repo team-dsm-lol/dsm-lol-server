@@ -72,12 +72,6 @@ class UserService(
         user.summonerName = summonerName
         user.level = actualLevel // 실제 조회된 레벨 사용
         
-        // 현재 티어/랭크 설정 (OP.GG에서 가져온 현재 시즌 티어)
-        if (opggTierInfo.currentSeasonHighest != null) {
-            user.tier = opggTierInfo.currentSeasonHighest.tier
-            user.rank = opggTierInfo.currentSeasonHighest.rank
-        }
-        
         // 이번 시즌 최고 티어 설정
         if (opggTierInfo.currentSeasonHighest != null) {
             user.seasonHighestTier = opggTierInfo.currentSeasonHighest.tier
@@ -100,6 +94,16 @@ class UserService(
                 user.allTimeHighestRank = allTimeHighest.rank
             }
         }
+        
+        // 점수 계산에 사용되는 중간 티어를 user.tier와 user.rank에 저장
+        val finalTierInfo = riotApiService.calculateFinalTierForScore(
+            seasonHighestTier = user.seasonHighestTier,
+            seasonHighestRank = user.seasonHighestRank,
+            allTimeHighestTier = user.allTimeHighestTier,
+            allTimeHighestRank = user.allTimeHighestRank
+        )
+        user.tier = finalTierInfo.tier
+        user.rank = finalTierInfo.rank
         
 //        // 장인 베네핏 계산 (Riot API 기반)
 //        user.masteryBenefit = riotApiService.calculateMasteryBenefitFromRiotAPI(
@@ -196,6 +200,16 @@ class UserService(
         user.allTimeHighestTier = topTier
         user.allTimeHighestRank = topRank
         
+        // 점수 계산에 사용되는 중간 티어를 user.tier와 user.rank에 저장
+        val finalTierInfo = riotApiService.calculateFinalTierForScore(
+            seasonHighestTier = user.seasonHighestTier,
+            seasonHighestRank = user.seasonHighestRank,
+            allTimeHighestTier = user.allTimeHighestTier,
+            allTimeHighestRank = user.allTimeHighestRank
+        )
+        user.tier = finalTierInfo.tier
+        user.rank = finalTierInfo.rank
+        
         // 점수 재계산
         user.score = riotApiService.calculateScore(
             seasonHighestTier = user.seasonHighestTier,
@@ -233,12 +247,6 @@ class UserService(
                 val opggTierInfo = riotApiService.getTierInfoFromOpGG(gameName, tagLine)
                 
                 if (opggTierInfo != null) {
-                    // 현재 티어/랭크 업데이트
-                    if (opggTierInfo.currentSeasonHighest != null) {
-                        user.tier = opggTierInfo.currentSeasonHighest.tier
-                        user.rank = opggTierInfo.currentSeasonHighest.rank
-                    }
-                    
                     // 이번 시즌 최고 티어 업데이트
                     if (opggTierInfo.currentSeasonHighest != null) {
                         user.seasonHighestTier = opggTierInfo.currentSeasonHighest.tier
@@ -261,6 +269,16 @@ class UserService(
                             user.allTimeHighestRank = allTimeHighest.rank
                         }
                     }
+                    
+                    // 점수 계산에 사용되는 중간 티어를 user.tier와 user.rank에 저장
+                    val finalTierInfo = riotApiService.calculateFinalTierForScore(
+                        seasonHighestTier = user.seasonHighestTier,
+                        seasonHighestRank = user.seasonHighestRank,
+                        allTimeHighestTier = user.allTimeHighestTier,
+                        allTimeHighestRank = user.allTimeHighestRank
+                    )
+                    user.tier = finalTierInfo.tier
+                    user.rank = finalTierInfo.rank
                     
                     // 소환사 레벨 재조회 및 업데이트
                     val actualLevel = riotApiService.getSummonerLevel(gameName, tagLine)
@@ -351,6 +369,16 @@ class UserService(
                                 user.allTimeHighestTier = newAllTimeHighest.tier
                                 user.allTimeHighestRank = newAllTimeHighest.rank
                                 
+                                // 점수 계산에 사용되는 중간 티어를 user.tier와 user.rank에 저장
+                                val finalTierInfo = riotApiService.calculateFinalTierForScore(
+                                    seasonHighestTier = user.seasonHighestTier,
+                                    seasonHighestRank = user.seasonHighestRank,
+                                    allTimeHighestTier = user.allTimeHighestTier,
+                                    allTimeHighestRank = user.allTimeHighestRank
+                                )
+                                user.tier = finalTierInfo.tier
+                                user.rank = finalTierInfo.rank
+                                
                                 // 소환사 레벨도 함께 업데이트
                                 val actualLevel = riotApiService.getSummonerLevel(gameName, tagLine)
                                 if (actualLevel != null) {
@@ -424,6 +452,16 @@ class UserService(
                 if (actualLevel != null) {
                     val oldLevel = user.level
                     user.level = actualLevel
+                    
+                    // 점수 계산에 사용되는 중간 티어를 user.tier와 user.rank에 저장
+                    val finalTierInfo = riotApiService.calculateFinalTierForScore(
+                        seasonHighestTier = user.seasonHighestTier,
+                        seasonHighestRank = user.seasonHighestRank,
+                        allTimeHighestTier = user.allTimeHighestTier,
+                        allTimeHighestRank = user.allTimeHighestRank
+                    )
+                    user.tier = finalTierInfo.tier
+                    user.rank = finalTierInfo.rank
                     
                     // 점수 재계산 (레벨별 최소 점수 적용)
                     user.score = riotApiService.calculateScore(
